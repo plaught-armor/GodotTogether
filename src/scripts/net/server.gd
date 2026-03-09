@@ -221,7 +221,6 @@ func node_removal_request(scene_path: String, node_path: NodePath) -> void:
 
 	if not id_has_permission(id, GodotTogether.Permission.EDIT_SCENES): return
 
-	main.client.receive_node_removal(scene_path, node_path)
 	submit_node_removal(scene_path, node_path, id)
 
 @rpc("any_peer", "call_remote", "reliable")
@@ -234,7 +233,6 @@ func node_add_request(scene_path: String, node_path: NodePath, node_type: String
 	
 	if not id_has_permission(id, GodotTogether.Permission.EDIT_SCENES): return
 
-	main.client.receive_node_add(scene_path, node_path, node_type, properties)
 	submit_node_add(scene_path, node_path, node_type, properties, id)
 
 func submit_node_removal(scene_path: String, node_path: NodePath, sender := 0) -> void:
@@ -270,6 +268,16 @@ func submit_node_reparent(scene_path: String, node_path: NodePath, new_parent_pa
 	auth_rpc(main.client.receive_node_reparent, [scene_path, node_path, new_parent_path, new_index], [sender])
 
 @rpc("any_peer", "call_remote", "reliable")
+func node_reorder_request(scene_path: String, node_path: NodePath, new_index: int) -> void:
+	if not id_has_permission(multiplayer.get_remote_sender_id(), GodotTogether.Permission.EDIT_SCENES): return
+
+	submit_node_reorder(scene_path, node_path, new_index)
+
+func submit_node_reorder(scene_path: String, node_path: NodePath, new_index: int, sender := 0) -> void:
+	main.client.receive_node_reorder(scene_path, node_path, new_index)
+	auth_rpc(main.client.receive_node_reorder, [scene_path, node_path, new_index], [sender])
+
+@rpc("any_peer", "call_remote", "reliable")
 func file_add_from_client(path: String, buffer: PackedByteArray) -> void:
 	var id = multiplayer.get_remote_sender_id()
 
@@ -284,13 +292,16 @@ func file_add_from_client(path: String, buffer: PackedByteArray) -> void:
 	if f:
 		f.store_buffer(buffer)
 		f.close()
-	
+
+	if path.get_extension() == "tscn":
+		EditorInterface.reload_scene_from_path(path)
+
 	EditorInterface.get_resource_filesystem().scan()
-	
+
 	await get_tree().create_timer(0.5).timeout
 	main.change_detector.cached_file_hashes = GDTFiles.get_file_tree_hashes()
 	main.change_detector.suppress_filesystem_sync = false
-	
+
 	broadcast_file_add_with_buffer(path, buffer, id)
 
 @rpc("any_peer", "call_remote", "reliable")
@@ -302,13 +313,16 @@ func file_modify_from_client(path: String, buffer: PackedByteArray) -> void:
 
 	print("[SERVER] Received file modify from client %d: %s" % [id, path])
 	main.change_detector.suppress_filesystem_sync = true
-	
+
 	GDTFiles.ensure_dir_exists(path)
 	var f = FileAccess.open(path, FileAccess.WRITE)
 	if f:
 		f.store_buffer(buffer)
 		f.close()
-	
+
+	if path.get_extension() == "tscn":
+		EditorInterface.reload_scene_from_path(path)
+
 	EditorInterface.get_resource_filesystem().scan()
 	
 	await get_tree().create_timer(0.5).timeout

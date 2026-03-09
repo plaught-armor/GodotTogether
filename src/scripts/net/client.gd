@@ -10,6 +10,8 @@ signal file_received(path: String)
 
 var ignored_node_properties = GDTChangeDetector.IGNORED_PROPERTIES.Node
 
+var tool_script_warnings: PackedStringArray = []
+
 var client_peer = ENetMultiplayerPeer.new()
 var current_join_data := GDTJoinData.new()
 
@@ -172,7 +174,8 @@ func receive_file(path: String, buffer: PackedByteArray) -> void:
 		return
 	
 	print("Downloading " + path)
-	
+	_check_tool_script(path, buffer)
+
 	GDTFiles.ensure_dir_exists(path)
 	var f = FileAccess.open(path, FileAccess.WRITE)
 	var err = FileAccess.get_open_error()
@@ -200,8 +203,9 @@ func sync_file_add(path: String, buffer: PackedByteArray) -> void:
 	if not GDTValidator.is_path_safe(path): return
 
 	print("[CLIENT] Receiving file add: ", path)
+	_check_tool_script(path, buffer)
 	main.change_detector.suppress_filesystem_sync = true
-	
+
 	var new_hash = buffer.get_string_from_utf8().sha256_text()
 	main.change_detector.cached_file_hashes[path] = new_hash
 
@@ -210,6 +214,9 @@ func sync_file_add(path: String, buffer: PackedByteArray) -> void:
 	if f:
 		f.store_buffer(buffer)
 		f.close()
+
+	if path.get_extension() == "tscn":
+		EditorInterface.reload_scene_from_path(path)
 
 	EditorInterface.get_resource_filesystem().scan()
 
@@ -222,17 +229,21 @@ func sync_file_modify(path: String, buffer: PackedByteArray) -> void:
 	if not GDTValidator.is_path_safe(path): return
 
 	print("[CLIENT] Receiving file modify: ", path)
+	_check_tool_script(path, buffer)
 	main.change_detector.suppress_filesystem_sync = true
 
 	var new_hash = buffer.get_string_from_utf8().sha256_text()
 	main.change_detector.cached_file_hashes[path] = new_hash
-	
+
 	GDTFiles.ensure_dir_exists(path)
 	var f = FileAccess.open(path, FileAccess.WRITE)
 	if f:
 		f.store_buffer(buffer)
 		f.close()
-	
+
+	if path.get_extension() == "tscn":
+		EditorInterface.reload_scene_from_path(path)
+
 	EditorInterface.get_resource_filesystem().scan()
 
 	await get_tree().create_timer(0.5).timeout
@@ -347,6 +358,7 @@ func receive_node_removal(scene_path: String, node_path: NodePath) -> void:
 	if not node: return
 
 	prints("rm", node_path)
+	main.change_detector.set_node_supression(node, true)
 	node.queue_free()
 
 @rpc("authority", "call_remote", "reliable")
@@ -488,6 +500,40 @@ func receive_node_reparent(scene_path: String, node_path: NodePath, new_parent_p
 
 	await get_tree().create_timer(0.1).timeout
 	main.change_detector.set_node_supression(node, false)
+
+@rpc("authority", "call_remote", "reliable")
+func receive_node_reorder(scene_path: String, node_path: NodePath, new_index: int) -> void:
+	var scene = GDTUtils.get_loaded_scene_root(scene_path)
+
+	if not scene:
+		var apply_reorder = func(scene_root: Node):
+			var node = scene_root.get_node_or_null(node_path)
+			if not node: return false
+
+			node.get_parent().move_child(node, new_index)
+			return true
+
+		_apply_change_to_unloaded_scene(scene_path, apply_reorder)
+		return
+
+	var node = scene.get_node_or_null(node_path)
+	if not node: return
+
+	main.change_detector.set_node_supression(node, true)
+	node.get_parent().move_child(node, new_index)
+
+	await get_tree().create_timer(0.1).timeout
+	main.change_detector.set_node_supression(node, false)
+
+func _check_tool_script(path: String, buffer: PackedByteArray) -> void:
+	if path.get_extension() != "gd": return
+
+	var content = buffer.get_string_from_utf8()
+	if content.begins_with("@tool"):
+		var warning = "Tool script detected: %s" % path
+		print("[WARNING] " + warning)
+		main.toaster.push_toast(warning, EditorToaster.SEVERITY_WARNING)
+		tool_script_warnings.append(path)
 
 func is_active() -> bool:
 	return client_peer.get_connection_status() == MultiplayerPeer.CONNECTION_CONNECTED

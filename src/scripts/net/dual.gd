@@ -12,7 +12,7 @@ var users: Array[GDTUser]
 
 var prev_mouse_pos := Vector2()
 var prev_3d_pos := Vector3()
-var prev_3d_rot := Vector3()
+var prev_3d_rot := Quaternion()
 
 var avatar_3d_scene = load("res://addons/GodotTogether/src/scenes/Avatar3D/Avatar3D.tscn")
 var avatar_2d_scene = load("res://addons/GodotTogether/src/scenes/Avatar2D/Avatar2D.tscn")
@@ -33,6 +33,7 @@ func _ready() -> void:
 	main.change_detector.node_added.connect(_node_added)
 	main.change_detector.node_renamed.connect(_node_renamed)
 	main.change_detector.node_reparented.connect(_node_reparented)
+	main.change_detector.node_reordered.connect(_node_reordered)
 	
 	update_timer.timeout.connect(_update)
 	update_timer.one_shot = false
@@ -63,16 +64,16 @@ func _update() -> void:
 	if new_camera != camera:
 		camera = new_camera
 		prev_3d_pos = Vector3.ZERO
-		prev_3d_rot = Vector3.ZERO
+		prev_3d_rot = Quaternion()
 		return
-	
-	if camera.position == Vector3.ZERO and camera.rotation == Vector3.ZERO:
+
+	if camera.position == Vector3.ZERO and camera.quaternion == Quaternion():
 		return
-	
-	if camera.position != prev_3d_pos or camera.rotation != prev_3d_rot:
+
+	if camera.position != prev_3d_pos or camera.quaternion != prev_3d_rot:
 		prev_3d_pos = camera.position
-		prev_3d_rot = camera.rotation
-		update_3d_avatar.rpc(camera.position, camera.rotation)
+		prev_3d_rot = camera.quaternion
+		update_3d_avatar.rpc(camera.position, camera.quaternion)
 
 func _peer_connected(id: int) -> void:
 	pass
@@ -217,6 +218,18 @@ func _node_reparented(node: Node, old_parent: Node, new_parent: Node) -> void:
 	elif main.server.is_active():
 		main.server.submit_node_reparent(scene_path, node_path, new_parent_path, new_index)
 
+func _node_reordered(node: Node, new_index: int) -> void:
+	if not should_update(node): return
+
+	var scene = EditorInterface.get_edited_scene_root()
+	var scene_path = scene.scene_file_path
+	var node_path = scene.get_path_to(node)
+
+	if main.client.is_active():
+		main.server.node_reorder_request.rpc_id(1, scene_path, node_path, new_index)
+	elif main.server.is_active():
+		main.server.submit_node_reorder(scene_path, node_path, new_index)
+
 func get_user_by_id(id: int) -> GDTUser:
 	for i in users:
 		if i.id == id:
@@ -314,12 +327,12 @@ func update_2d_avatar(position: Vector2) -> void:
 	marker.global_position = position
 
 @rpc("any_peer")
-func update_3d_avatar(position: Vector3, rotation: Vector3) -> void:
+func update_3d_avatar(position: Vector3, rotation: Quaternion) -> void:
 	if not main: return
-	if position == Vector3.ZERO and rotation == Vector3.ZERO: return
-	
+	if position == Vector3.ZERO and rotation == Quaternion(): return
+
 	var marker = get_avatar_3d(multiplayer.get_remote_sender_id())
 	if not marker: return
-	
+
 	marker.position = position
-	marker.rotation = rotation
+	marker.quaternion = rotation

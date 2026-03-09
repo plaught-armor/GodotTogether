@@ -8,6 +8,7 @@ signal node_removed(node: Node, path: NodePath)
 signal node_added(node: Node)
 signal node_renamed(node: Node, old_name: String, new_name: String)
 signal node_reparented(node: Node, old_parent: Node, new_parent: Node)
+signal node_reordered(node: Node, new_index: int)
 
 enum ResourceType {
 	LOCAL,
@@ -113,7 +114,7 @@ static func is_encoded_resource(value) -> bool:
 	return value is Dictionary and "_gdtRes" in value
 
 static func is_file_resource(resource: Resource) -> bool:
-	return resource.resource_path and not resource.resource_path.contains("::")
+	return resource.resource_path != ""
 
 static func encode_resource(resource: Resource) -> Dictionary:
 	var res = {
@@ -236,13 +237,22 @@ func _cycle() -> void:
 func track_node_parent(node: Node) -> void:
 	if not "parent_tracker" in observed_nodes[node]:
 		observed_nodes[node]["parent_tracker"] = node.get_parent()
-	
+		observed_nodes[node]["index_tracker"] = node.get_index()
+
 	var old_parent = observed_nodes[node]["parent_tracker"]
 	var current_parent = node.get_parent()
-	
+
 	if old_parent != current_parent and is_instance_valid(old_parent) and is_instance_valid(current_parent):
 		observed_nodes[node]["parent_tracker"] = current_parent
+		observed_nodes[node]["index_tracker"] = node.get_index()
 		node_reparented.emit(node, old_parent, current_parent)
+	else:
+		var old_index = observed_nodes[node]["index_tracker"]
+		var current_index = node.get_index()
+		if old_index != current_index:
+			observed_nodes[node]["index_tracker"] = current_index
+			if not supressed_nodes.has(node):
+				node_reordered.emit(node, current_index)
 
 func _node_added(node: Node) -> void:
 	var current_scene := EditorInterface.get_edited_scene_root()
@@ -250,7 +260,7 @@ func _node_added(node: Node) -> void:
 
 	if scene_path in incoming_nodes:
 		var incoming = incoming_nodes[scene_path]
-		var node_path = node.get_path_to(current_scene)
+		var node_path = current_scene.get_path_to(node)
 
 		if node_path in incoming:
 			incoming.erase(node_path)
