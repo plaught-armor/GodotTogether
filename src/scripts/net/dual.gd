@@ -126,7 +126,7 @@ func should_update(node: Node) -> bool:
 		EditorInterface.get_edited_scene_root()
 	)
 
-func _node_properties_changed(node: Node, changed_keys: Array):
+func _node_properties_changed(node: Node, changed_keys: Array[StringName]) -> void:
 	if not should_update(node): return
 	
 	var scene = EditorInterface.get_edited_scene_root()
@@ -315,7 +315,7 @@ func clear_avatars() -> void:
 			i.queue_free()
 
 	avatar_3d_markers.clear()
-	avatar_3d_markers.clear()
+	avatar_2d_markers.clear()
 
 @rpc("any_peer")
 func update_2d_avatar(position: Vector2) -> void:

@@ -186,7 +186,7 @@ func receive_file(path: String, buffer: PackedByteArray) -> void:
 	
 	print("Saved successfully")
 	
-	if path.get_extension() == "tscn":
+	if path.get_extension() == &"tscn":
 		var current_scene = EditorInterface.get_edited_scene_root()
 
 		if current_scene and current_scene.scene_file_path == path:
@@ -215,7 +215,7 @@ func sync_file_add(path: String, buffer: PackedByteArray) -> void:
 		f.store_buffer(buffer)
 		f.close()
 
-	if path.get_extension() == "tscn":
+	if path.get_extension() == &"tscn":
 		EditorInterface.reload_scene_from_path(path)
 
 	EditorInterface.get_resource_filesystem().scan()
@@ -241,7 +241,7 @@ func sync_file_modify(path: String, buffer: PackedByteArray) -> void:
 		f.store_buffer(buffer)
 		f.close()
 
-	if path.get_extension() == "tscn":
+	if path.get_extension() == &"tscn":
 		EditorInterface.reload_scene_from_path(path)
 
 	EditorInterface.get_resource_filesystem().scan()
@@ -339,7 +339,7 @@ func receive_node_updates(scene_path: String, node_path: NodePath, property_dict
 
 @rpc("authority", "call_remote", "reliable")
 func receive_node_removal(scene_path: String, node_path: NodePath) -> void:
-	var scene = EditorInterface.get_edited_scene_root()
+	var scene = GDTUtils.get_loaded_scene_root(scene_path)
 
 	if not scene:
 		var apply_removal = func(scene_root: Node):
@@ -382,7 +382,7 @@ func receive_node_add(scene_path: String, node_path: NodePath, node_type: String
 			node.owner = scene_root
 
 			for key in properties.keys():
-				if key == "name": continue
+				if key == &"name": continue
 
 				var value = properties[key]
 				
@@ -426,7 +426,7 @@ func receive_node_add(scene_path: String, node_path: NodePath, node_type: String
 
 	if properties.size() > 0:
 		for key in properties.keys():
-			if key == "name": continue
+			if key == &"name": continue
 
 			var value = properties[key]
 			if GDTChangeDetector.is_encoded_resource(value):
@@ -462,7 +462,7 @@ func receive_node_rename(scene_path: String, old_path: NodePath, new_name: Strin
 
 @rpc("authority", "call_remote", "reliable")
 func receive_node_reparent(scene_path: String, node_path: NodePath, new_parent_path: NodePath, new_index: int) -> void:
-	var scene = EditorInterface.get_edited_scene_root()
+	var scene = GDTUtils.get_loaded_scene_root(scene_path)
 
 	if not scene:
 		var apply_reparent = func(scene_root: Node):
@@ -526,7 +526,7 @@ func receive_node_reorder(scene_path: String, node_path: NodePath, new_index: in
 	main.change_detector.set_node_supression(node, false)
 
 func _check_tool_script(path: String, buffer: PackedByteArray) -> void:
-	if path.get_extension() != "gd": return
+	if path.get_extension() != &"gd": return
 
 	var content = buffer.get_string_from_utf8()
 	if content.begins_with("@tool"):

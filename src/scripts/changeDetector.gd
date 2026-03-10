@@ -3,7 +3,7 @@ extends GDTComponent
 class_name GDTChangeDetector
 
 signal scene_changed
-signal node_properties_changed(node: Node, changed_keys: Array)
+signal node_properties_changed(node: Node, changed_keys: Array[StringName])
 signal node_removed(node: Node, path: NodePath)
 signal node_added(node: Node)
 signal node_renamed(node: Node, old_name: String, new_name: String)
@@ -26,16 +26,20 @@ const IGNORED_PROPERTY_USAGE_FLAGS := [
 
 # TODO: Ignores for different kinds of objects, Ignore resource_path
 const IGNORED_PROPERTIES: Dictionary = {
-	"Node": [
-		"owner",
-		"multiplayer"
+	&"Node": [
+		&"owner",
+		&"multiplayer"
 	],
-	"Resource": [
-		"resource_path"
+	&"Resource": [
+		&"resource_path"
 	]
 }
 
 const REFRESH_RATE: float = 0.1
+
+const KEY_NAME := &"name"
+const KEY_PARENT_TRACKER := &"parent_tracker"
+const KEY_INDEX_TRACKER := &"index_tracker"
 
 # Dicts are faster than arrays apparently
 var observed_nodes := {}
@@ -55,17 +59,17 @@ var filesystem_watcher: Timer = Timer.new()
 var suppress_filesystem_sync := false
 var cached_file_hashes := {}
 
-static func get_ignored_properties(obj: Object) -> Array:
+static func get_ignored_properties(obj: Object) -> Array[StringName]:
 	for key in IGNORED_PROPERTIES.keys():
 		if obj.is_class(key):
 			return IGNORED_PROPERTIES[key]
-	
+
 	return []
 
-static func get_property_keys(obj: Object) -> Array[String]:
-	var res: Array[String] = []
-	
-	var ignored = get_ignored_properties(obj)
+static func get_property_keys(obj: Object) -> Array[StringName]:
+	var res: Array[StringName] = []
+
+	var ignored: Array[StringName] = get_ignored_properties(obj)
 
 	for i in obj.get_property_list():
 		var con := true
@@ -177,7 +181,7 @@ func _ready() -> void:
 	rescan_timer.wait_time = 3
 	rescan_timer.timeout.connect(observe_current_scene)
 	add_child(rescan_timer)
-	node_watcher.start()
+	rescan_timer.start()
 
 	filesystem_watcher.wait_time = 1.0
 	filesystem_watcher.timeout.connect(_check_filesystem_changes)
@@ -213,17 +217,17 @@ func _cycle() -> void:
 		var cached: Dictionary = observed_nodes_cache[node]
 		var current := get_property_hash_dict(node)
 
-		var changed_keys: Array[String] = []
+		var changed_keys: Array[StringName] = []
 
 		for i in current.keys():
-			if i == "name":
+			if i == KEY_NAME:
 				if (i in cached) and (cached[i] != current[i]):
-					var old_name = observed_nodes[node]["name"]
-					
+					var old_name = observed_nodes[node][KEY_NAME]
+
 					if not supressed_nodes.has(node):
 						node_renamed.emit(node, old_name, node.name)
-					
-					observed_nodes[node]["name"] = node.name
+
+					observed_nodes[node][KEY_NAME] = node.name
 
 			if (not i in cached) or (not i in current) or (cached[i] != current[i]):
 				changed_keys.append(i)
@@ -235,22 +239,24 @@ func _cycle() -> void:
 			observed_nodes_cache[node] = current
 
 func track_node_parent(node: Node) -> void:
-	if not "parent_tracker" in observed_nodes[node]:
-		observed_nodes[node]["parent_tracker"] = node.get_parent()
-		observed_nodes[node]["index_tracker"] = node.get_index()
+	var data: Dictionary = observed_nodes[node]
 
-	var old_parent = observed_nodes[node]["parent_tracker"]
+	if not KEY_PARENT_TRACKER in data:
+		data[KEY_PARENT_TRACKER] = node.get_parent()
+		data[KEY_INDEX_TRACKER] = node.get_index()
+
+	var old_parent = data[KEY_PARENT_TRACKER]
 	var current_parent = node.get_parent()
 
 	if old_parent != current_parent and is_instance_valid(old_parent) and is_instance_valid(current_parent):
-		observed_nodes[node]["parent_tracker"] = current_parent
-		observed_nodes[node]["index_tracker"] = node.get_index()
+		data[KEY_PARENT_TRACKER] = current_parent
+		data[KEY_INDEX_TRACKER] = node.get_index()
 		node_reparented.emit(node, old_parent, current_parent)
 	else:
-		var old_index = observed_nodes[node]["index_tracker"]
-		var current_index = node.get_index()
+		var old_index: int = data[KEY_INDEX_TRACKER]
+		var current_index: int = node.get_index()
 		if old_index != current_index:
-			observed_nodes[node]["index_tracker"] = current_index
+			data[KEY_INDEX_TRACKER] = current_index
 			if not supressed_nodes.has(node):
 				node_reordered.emit(node, current_index)
 
@@ -320,8 +326,8 @@ func resume() -> void:
 func merge(node: Node, property_dict: Dictionary) -> void:
 	observe(node)
 
-	if "name" in property_dict:
-		observed_nodes[node]["name"] = property_dict["name"]
+	if KEY_NAME in property_dict:
+		observed_nodes[node][KEY_NAME] = property_dict[KEY_NAME]
 
 	for key in property_dict.keys():
 		observed_nodes_cache[node][key] = hash_value(node[key])
@@ -351,7 +357,9 @@ func observe(node: Node) -> void:
 
 	observed_nodes_cache[node] = get_property_hash_dict(node)
 	observed_nodes[node] = {
-		"name": node.name
+		KEY_NAME: node.name,
+		KEY_PARENT_TRACKER: node.get_parent(),
+		KEY_INDEX_TRACKER: node.get_index()
 	}
 
 	node.tree_exiting.connect(_node_exiting.bind(node))

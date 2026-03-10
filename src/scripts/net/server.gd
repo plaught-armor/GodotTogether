@@ -209,16 +209,17 @@ func broadcast_restart():
 @rpc("any_peer", "call_remote", "reliable")
 func node_update_request(scene_path: String, node_path: NodePath, property_dict: Dictionary) -> void:
 	var id = multiplayer.get_remote_sender_id()
-	
+
+	if not GDTValidator.is_path_safe(scene_path): return
 	if not id_has_permission(id, GodotTogether.Permission.EDIT_SCENES): return
-	
-	main.client.receive_node_updates(scene_path, node_path, property_dict)
+
 	submit_node_update(scene_path, node_path, property_dict, id)
 
 @rpc("any_peer", "call_remote", "reliable")
 func node_removal_request(scene_path: String, node_path: NodePath) -> void:
 	var id = multiplayer.get_remote_sender_id()
 
+	if not GDTValidator.is_path_safe(scene_path): return
 	if not id_has_permission(id, GodotTogether.Permission.EDIT_SCENES): return
 
 	submit_node_removal(scene_path, node_path, id)
@@ -227,10 +228,12 @@ func node_removal_request(scene_path: String, node_path: NodePath) -> void:
 func node_add_request(scene_path: String, node_path: NodePath, node_type: String, properties: Dictionary) -> void:
 	var id = multiplayer.get_remote_sender_id()
 
+	if not GDTValidator.is_path_safe(scene_path): return
+
 	if not ClassDB.class_exists(node_type):
 		print("Invalid node type: %s" % node_type)
 		return
-	
+
 	if not id_has_permission(id, GodotTogether.Permission.EDIT_SCENES): return
 
 	submit_node_add(scene_path, node_path, node_type, properties, id)
@@ -249,14 +252,16 @@ func submit_node_add(scene_path: String, node_path: NodePath, node_type: String,
 
 @rpc("any_peer", "call_remote", "reliable")
 func node_rename_request(scene_path: String, old_path: NodePath, new_name: String) -> void:
+	if not GDTValidator.is_path_safe(scene_path): return
 	if not id_has_permission(multiplayer.get_remote_sender_id(), GodotTogether.Permission.EDIT_SCENES): return
-	
+
 	submit_node_rename(scene_path, old_path, new_name)
 
 @rpc("any_peer", "call_remote", "reliable")
 func node_reparent_request(scene_path: String, node_path: NodePath, new_parent_path: NodePath, new_index: int) -> void:
+	if not GDTValidator.is_path_safe(scene_path): return
 	if not id_has_permission(multiplayer.get_remote_sender_id(), GodotTogether.Permission.EDIT_SCENES): return
-	
+
 	submit_node_reparent(scene_path, node_path, new_parent_path, new_index)
 
 func submit_node_rename(scene_path: String, old_path: NodePath, new_name: String, sender := 0) -> void:
@@ -269,6 +274,7 @@ func submit_node_reparent(scene_path: String, node_path: NodePath, new_parent_pa
 
 @rpc("any_peer", "call_remote", "reliable")
 func node_reorder_request(scene_path: String, node_path: NodePath, new_index: int) -> void:
+	if not GDTValidator.is_path_safe(scene_path): return
 	if not id_has_permission(multiplayer.get_remote_sender_id(), GodotTogether.Permission.EDIT_SCENES): return
 
 	submit_node_reorder(scene_path, node_path, new_index)
@@ -293,7 +299,7 @@ func file_add_from_client(path: String, buffer: PackedByteArray) -> void:
 		f.store_buffer(buffer)
 		f.close()
 
-	if path.get_extension() == "tscn":
+	if path.get_extension() == &"tscn":
 		EditorInterface.reload_scene_from_path(path)
 
 	EditorInterface.get_resource_filesystem().scan()
@@ -320,7 +326,7 @@ func file_modify_from_client(path: String, buffer: PackedByteArray) -> void:
 		f.store_buffer(buffer)
 		f.close()
 
-	if path.get_extension() == "tscn":
+	if path.get_extension() == &"tscn":
 		EditorInterface.reload_scene_from_path(path)
 
 	EditorInterface.get_resource_filesystem().scan()
