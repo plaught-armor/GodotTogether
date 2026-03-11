@@ -292,6 +292,16 @@ func sync_file_remove(path: String) -> void:
 	main.change_detector.suppress_filesystem_sync = false
 
 
+static func _apply_properties_to_node(node: Node, properties: Dictionary) -> void:
+	for key in properties.keys():
+		if key == &"name":
+			continue
+		var value = properties[key]
+		if GDTChangeDetector.is_encoded_resource(value):
+			value = GDTChangeDetector.decode_resource(value)
+		node[key] = value
+
+
 func _apply_change_to_unloaded_scene(scene_path: String, apply_func: Callable) -> void:
 	if not FileAccess.file_exists(scene_path):
 		push_error("Scene file not found for background update: " + scene_path)
@@ -414,21 +424,11 @@ func receive_node_add(scene_path: String, node_path: NodePath, node_type: String
 			node.name = node_path.get_name(path_size - 1)
 			parent.add_child(node)
 			node.owner = scene_root
+			_apply_properties_to_node(node, properties)
+			return true
 
-	for key in properties.keys():
-		if key == &"name":
-			continue
-
-		var value = properties[key]
-
-		if GDTChangeDetector.is_encoded_resource(value):
-			value = GDTChangeDetector.decode_resource(value)
-
-		node[key] = value
-	return true
-
-	_apply_change_to_unloaded_scene(scene_path, apply_add)
-	return
+		_apply_change_to_unloaded_scene(scene_path, apply_add)
+		return
 
 	var existing = scene.get_node_or_null(node_path)
 
@@ -460,16 +460,7 @@ func receive_node_add(scene_path: String, node_path: NodePath, node_type: String
 	main.change_detector.observe(node)
 
 	if properties.size() > 0:
-		for key in properties.keys():
-			if key == &"name":
-				continue
-
-	var value = properties[key]
-	if GDTChangeDetector.is_encoded_resource(value):
-		value = GDTChangeDetector.decode_resource(value)
-
-		node[key] = value
-
+		_apply_properties_to_node(node, properties)
 		main.change_detector.merge(node, properties)
 
 
