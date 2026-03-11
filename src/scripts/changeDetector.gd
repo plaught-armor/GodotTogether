@@ -66,7 +66,8 @@ static func get_ignored_properties(obj: Object) -> Array[StringName]:
 		if obj.is_class(key):
 			return IGNORED_PROPERTIES[key]
 
-	return []
+	var empty: Array[StringName] = []
+	return empty
 
 
 static func get_property_keys(obj: Object) -> Array[StringName]:
