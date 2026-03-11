@@ -64,7 +64,9 @@ var cached_file_hashes := { }
 static func get_ignored_properties(obj: Object) -> Array[StringName]:
 	for key in IGNORED_PROPERTIES.keys():
 		if obj.is_class(key):
-			return IGNORED_PROPERTIES[key]
+			var result: Array[StringName] = []
+			result.assign(IGNORED_PROPERTIES[key])
+			return result
 
 	var empty: Array[StringName] = []
 	return empty
