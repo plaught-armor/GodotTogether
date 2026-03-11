@@ -16,10 +16,10 @@ jobs:
 
       - name: Create plugin zip
         run: |
-          mkdir -p staging/addons/GodotTogether
-          cp -r src plugin.cfg LICENSE staging/addons/GodotTogether/
+          mkdir -p staging/GodotTogether
+          cp -r src plugin.cfg LICENSE staging/GodotTogether/
           cd staging
-          zip -r ../GodotTogether-${{ github.ref_name }}.zip addons/
+          zip -r ../GodotTogether-${{ github.ref_name }}.zip GodotTogether/
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
