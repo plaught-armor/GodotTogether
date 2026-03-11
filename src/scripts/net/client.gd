@@ -415,17 +415,17 @@ func receive_node_add(scene_path: String, node_path: NodePath, node_type: String
 			parent.add_child(node)
 			node.owner = scene_root
 
-			for key in properties.keys():
-				if key == &"name":
-					continue
+	for key in properties.keys():
+		if key == &"name":
+			continue
 
-				var value = properties[key]
+		var value = properties[key]
 
-				if GDTChangeDetector.is_encoded_resource(value):
-					value = GDTChangeDetector.decode_resource(value)
+		if GDTChangeDetector.is_encoded_resource(value):
+			value = GDTChangeDetector.decode_resource(value)
 
-				node[key] = value
-			return true
+		node[key] = value
+	return true
 
 		_apply_change_to_unloaded_scene(scene_path, apply_add)
 		return
@@ -468,7 +468,7 @@ func receive_node_add(scene_path: String, node_path: NodePath, node_type: String
 	if GDTChangeDetector.is_encoded_resource(value):
 		value = GDTChangeDetector.decode_resource(value)
 
-			node[key] = value
+		node[key] = value
 
 		main.change_detector.merge(node, properties)
 
