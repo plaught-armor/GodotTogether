@@ -427,8 +427,8 @@ func receive_node_add(scene_path: String, node_path: NodePath, node_type: String
 		node[key] = value
 	return true
 
-		_apply_change_to_unloaded_scene(scene_path, apply_add)
-		return
+	_apply_change_to_unloaded_scene(scene_path, apply_add)
+	return
 
 	var existing = scene.get_node_or_null(node_path)
 
