@@ -1,10 +1,9 @@
 @tool
-
 class_name GDTUser
 
 enum Type {
 	HOST,
-	GUEST
+	GUEST,
 }
 
 enum DisconnectReason {
@@ -13,7 +12,7 @@ enum DisconnectReason {
 	BANNED,
 	PASSWORD_INVALID,
 	REJECTED,
-	JOINING_TOO_FAST
+	JOINING_TOO_FAST,
 }
 
 const FIELDS = [
@@ -39,27 +38,30 @@ var authenticated := false
 var pending := false
 
 var permissions: Array[GodotTogether.Permission] = [
-    GodotTogether.Permission.EDIT_SCENES,
-    GodotTogether.Permission.EDIT_SCRIPTS,
-    GodotTogether.Permission.ADD_CUSTOM_FILES,
-    GodotTogether.Permission.MODIFY_CUSTOM_FILES,
-    GodotTogether.Permission.DELETE_SCRIPTS
+	GodotTogether.Permission.EDIT_SCENES,
+	GodotTogether.Permission.EDIT_SCRIPTS,
+	GodotTogether.Permission.ADD_CUSTOM_FILES,
+	GodotTogether.Permission.MODIFY_CUSTOM_FILES,
+	GodotTogether.Permission.DELETE_SCRIPTS,
 ]
+
 
 func _init(id: int, peer: ENetPacketPeer = null, main: GodotTogether = null):
 	self.id = id
 	self.peer = peer
 	self.joined_at = Time.get_unix_time_from_system()
 	self.main = main
-	
+
 	self.color = Color(
 		randf(),
 		randf(),
-		randf()
+		randf(),
 	)
+
 
 func has_permission(permission: GodotTogether.Permission) -> bool:
 	return authenticated and permission in permissions
+
 
 func auth() -> void:
 	assert(not authenticated, "User %d (%s) already authenticated" % [id, name])
@@ -73,24 +75,26 @@ func auth() -> void:
 		main.client.auth_successful.rpc_id(id)
 
 		var user_dict = to_dict()
-		
+
 		main.dual.create_avatar_2d(user_dict)
 		main.dual.create_avatar_3d(user_dict)
 
 		main.server.auth_rpc(main.client.user_connected, [user_dict], [id])
 		main.client.receive_user_list.rpc_id(id, main.server.get_user_dicts())
 		main.dual._user_connected(self)
-		
+
 		for i in main.server.get_authenticated_users():
-			if i.id == id: continue
+			if i.id == id:
+				continue
 			var dict = i.to_dict()
 
 			main.dual.create_avatar_2d.rpc_id(id, dict)
 			main.dual.create_avatar_3d.rpc_id(id, dict)
 
+
 func kick(reason: DisconnectReason = DisconnectReason.KICKED) -> void:
 	assert(peer, "Unable to kick user %s: missing peer" % id)
-	
+
 	authenticated = false
 
 	if main:
@@ -105,36 +109,41 @@ func kick(reason: DisconnectReason = DisconnectReason.KICKED) -> void:
 	if is_peer_connected(true):
 		peer.peer_disconnect_now(reason)
 
+
 func is_peer_connected(truly_connected := false) -> bool:
 	if not peer:
 		return true
 
 	var state = peer.get_state()
-	
+
 	if truly_connected:
 		return state != ENetPacketPeer.STATE_DISCONNECTED
 
 	var dis = [
 		ENetPacketPeer.STATE_DISCONNECTED,
 		ENetPacketPeer.STATE_DISCONNECT_LATER,
-		ENetPacketPeer.STATE_ACKNOWLEDGING_DISCONNECT
+		ENetPacketPeer.STATE_ACKNOWLEDGING_DISCONNECT,
 	]
-	
+
 	return not state in dis
+
 
 func is_server_user() -> bool:
 	return peer != null
 
+
 func to_dict() -> Dictionary:
-	var res = {}
+	var res = { }
 
 	for i in FIELDS:
 		res[i] = self[i]
 
 	return res
 
+
 func get_type_as_string() -> String:
 	return type_to_string(type)
+
 
 static func disconnect_reason_to_string(reason: DisconnectReason) -> String:
 	match reason:
@@ -148,16 +157,18 @@ static func disconnect_reason_to_string(reason: DisconnectReason) -> String:
 			return "Connection rejected by host"
 		DisconnectReason.JOINING_TOO_FAST:
 			return "You are joining too quickly"
-	
+
 	return "Connection lost"
+
 
 static func type_to_string(type: Type) -> String:
 	var key: String = Type.find_key(type)
 
 	if key:
 		return key.to_lower().capitalize()
-	
+
 	return "error"
+
 
 static func from_dict(dict: Dictionary) -> GDTUser:
 	var user = GDTUser.new(dict["id"], null)
@@ -167,13 +178,15 @@ static func from_dict(dict: Dictionary) -> GDTUser:
 
 	return user
 
+
 func approve() -> void:
 	assert(pending, "User %d (%s) is not pending" % [id, name])
 	assert(main, "Main is null")
 
 	pending = false
 	auth()
-	
+
+
 func reject(reason: DisconnectReason = DisconnectReason.REJECTED) -> void:
 	assert(pending, "User %d (%s) is not pending" % [id, name])
 	pending = false

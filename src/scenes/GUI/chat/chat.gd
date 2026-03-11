@@ -1,5 +1,6 @@
 @tool
 extends Control
+
 class_name GDTChat
 
 const IMG_JOINED = preload("res://addons/GodotTogether/src/img/play.svg")
@@ -20,12 +21,14 @@ const MAX_MESSAGE_LEN = 2048
 var main: GodotTogether
 var last_user: GDTUser
 
+
 func _ready() -> void:
-	if not main: return
+	if not main:
+		return
 
 	for i in get_templates():
 		i.visible = false
-	
+
 	var scroll_style = EditorInterface.get_editor_theme().get_stylebox("panel", "Panel")
 	scroll.add_theme_stylebox_override("panel", scroll_style)
 
@@ -36,22 +39,26 @@ func _ready() -> void:
 	main.dual.user_disconnected.connect(add_user_notification.bind(IMG_DISCONNECTED, "disconnected"))
 
 	$cover/vbox/btnMenu.pressed.connect(main.open_menu)
-	
+
 	clear()
+
 
 func _process(_delta: float) -> void:
 	cover.visible = main and not main.is_session_active()
-	
+
 	if input.has_focus():
 		if Input.is_key_pressed(KEY_ENTER) and not Input.is_key_pressed(KEY_CTRL) and not Input.is_key_pressed(KEY_SHIFT):
 			_send()
 
+
 func _send() -> void:
 	var text = input.text.strip_edges()
-	
-	if text == "": return
-	if text.length() > MAX_MESSAGE_LEN: return
-	
+
+	if text == "":
+		return
+	if text.length() > MAX_MESSAGE_LEN:
+		return
+
 	if main.server.is_active():
 		main.server.submit_chat_message(1, text)
 	else:
@@ -59,78 +66,86 @@ func _send() -> void:
 
 	input.clear()
 
+
 func add_msg_node(node: Control) -> void:
 	var sb: VScrollBar = scroll.get_v_scroll_bar()
 	var scroll_down = false
-	
+
 	if (sb.max_value - sb.value) < 300:
 		scroll_down = true
-	
+
 	messages.add_child(node)
-	
+
 	if scroll_down:
 		scroll.scroll_vertical = sb.max_value
+
 
 func add_system_message(text: String) -> void:
 	var msg = system_message.duplicate()
 	msg.visible = true
 	msg.text = text
 	add_msg_node(msg)
-	
+
 	last_user = null
+
 
 func add_user_message(text: String, user: GDTUser) -> void:
 	if last_user != user:
 		var header = usr_header.duplicate()
-		
+
 		header.visible = true
 		header.modulate = user.color
 		header.get_node("name").text = user.name
 		header.get_node("id").text = str(user.id)
-		
+
 		messages.add_child(header)
 		last_user = user
-	
+
 	var msg = usr_message.duplicate()
 	var time = Time.get_datetime_dict_from_system()
-	
+
 	msg.visible = true
 	msg.get_node("content").text = text
 	msg.get_node("time").text = "%s:%s" % [time["hour"], time["minute"]]
-	
+
 	add_msg_node(msg)
+
 
 func add_user_notification(user: GDTUser, icon: Texture, status: String) -> void:
 	var msg = user_notification.duplicate()
 	var user_label = msg.get_node("user")
-	
+
 	msg.get_node("icon").texture = icon
 	msg.get_node("status").text = status
-	
+
 	user_label.text = "%s (%s)" % [user.name, str(user.id)]
 	user_label.modulate = user.color
 
 	msg.visible = true
 	add_msg_node(msg)
 
+
 @rpc("authority", "reliable")
 func receive_user_message(text: String, id: int) -> void:
 	var user = main.dual.get_user_by_id(id)
-	if not user: return
+	if not user:
+		return
 
 	add_user_message(text, user)
+
 
 func get_templates() -> Array[Control]:
 	return [
 		usr_header,
 		usr_message,
 		system_message,
-		user_notification
+		user_notification,
 	]
+
 
 func clear() -> void:
 	var templates = get_templates()
-	
+
 	for i in messages.get_children():
 		if not i in templates:
 			i.queue_free()

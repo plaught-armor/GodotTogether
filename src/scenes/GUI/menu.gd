@@ -1,5 +1,6 @@
 @tool
 extends VBoxContainer
+
 class_name GDTMenu
 
 var main: GodotTogether
@@ -13,39 +14,42 @@ var gui: GodotTogetherGUI
 @onready var join_password = $sessionInit/start/join/password
 @onready var host_password = $sessionInit/start/host/password
 
+
 func _ready() -> void:
 	await get_tree().process_frame
-	
+
 	if main:
 		main_menu()
-		
-		main.client.disconnected.connect(func():
-			await get_tree().process_frame
-			session_start_menu("join")
+
+		main.client.disconnected.connect(
+			func():
+				await get_tree().process_frame
+				session_start_menu("join")
 		)
 
 	if visuals_available():
 		set_session_init_cover()
-		
+
 		username_input.text = GDTSettings.get_setting("username")
 		host_password.text = GDTSettings.get_setting("server/password")
 		$sessionInit/start/host/approveUsers.button_pressed = GDTSettings.get_setting("server/require_approval")
+
 
 func _host() -> void:
 	if main:
 		var port = $sessionInit/start/host/port/value.value
 		var max_clients = $sessionInit/start/host/users/value.value
-		
+
 		set_session_init_cover("Starting server...")
 		session_cancel.visible = false
-		
+
 		GDTSettings.set_setting("server/password", host_password.text)
 		GDTSettings.set_setting("server/require_approval", $sessionInit/start/host/approveUsers.button_pressed)
-		
+
 		await RenderingServer.frame_post_draw
-		
+
 		var err = main.server.start_hosting(port, max_clients)
-		
+
 		if err:
 			set_session_init_cover()
 			gui.alert("Failed to start server: %s" % error_string(err), "Failed to start server")
@@ -54,50 +58,49 @@ func _host() -> void:
 		main.dual.get_server_user().name = username_input.text
 
 	session_menu()
-	
+
 	$session/top/status.text = "You are hosting"
 	$session/top/end.text = "Stop server"
-	
+
 
 func _join() -> void:
 	if main.client:
 		main.client.current_join_data.username = username_input.text
 		main.client.current_join_data.password = join_password.text
-		
+
 		var ip = $sessionInit/start/join/address/ip.text
 		var port = $sessionInit/start/join/address/port.value
-		
+
 		session_cancel.visible = true
 
 		set_session_init_cover("Connecting...")
-		
+
 		var err = main.client.join(ip, port, main.client.current_join_data)
-		
+
 		if err:
 			set_session_init_cover()
 			gui.alert(
 				"Error: %s. \nMake sure the IP and port is valid. \nSee output for more details" % error_string(err),
-				"Failed to start client"
+				"Failed to start client",
 			)
 
 			return
-		
+
 		if not await main.client.connecting_finished:
 			if main.client.connection_cancelled:
 				set_session_init_cover()
 				return
 
-
 			set_session_init_cover()
 			gui.alert(
 				"Connection to %s:%s timed out. \nMake sure the IP and port is valid and the host's server \nis running and configured properly." % [ip, port],
-				"Failed to connect"
+				"Failed to connect",
 			)
 
 			return
 
 	set_session_init_cover("Waiting for host's approval...")
-	
+
 	await main.client.auth_succeed
 
 	set_session_init_cover("Starting project download...")
@@ -108,43 +111,49 @@ func _join() -> void:
 
 	_joined()
 
+
 func _joined() -> void:
 	session_menu()
-	
+
 	$session/top/status.text = "Connected"
 	$session/top/end.text = "Disconnect"
+
 
 func set_session_init_cover(text: String = "") -> void:
 	if text == "":
 		session_init_cover.hide()
 		return
-	
+
 	session_init_cover.get_node("vbox/title").text = text
 	session_init_cover.show()
+
 
 func end_session() -> void:
 	if main and main.is_session_active():
 		main.close_connection()
-	
+
 	main_menu()
+
 
 func session_menu() -> void:
 	set_session_init_cover()
 	$sessionInit.hide()
 	$session.show()
 
+
 func main_menu() -> void:
 	$sessionInit.show()
 	$sessionInit/pre.show()
-	
+
 	$sessionInit/start.hide()
 	$sessionInit/start/host.hide()
 	$sessionInit/start/join.hide()
 	$session.hide()
 
+
 func session_start_menu(tab: String = "") -> void:
 	set_session_init_cover()
-	
+
 	$sessionInit/start.show()
 	$sessionInit/pre.hide()
 	$sessionInit.show()
@@ -160,21 +169,25 @@ func session_start_menu(tab: String = "") -> void:
 	$sessionInit/start.hide()
 	await get_tree().process_frame
 	$sessionInit/start.show()
-		
+
+
 func visuals_available() -> bool:
-	if not gui: 
+	if not gui:
 		return false
-	
+
 	return gui.visuals_available()
+
 
 func _on_username_text_changed(text: String) -> void:
 	if visuals_available():
 		GDTSettings.set_setting("username", text)
 
+
 func _on_btn_cancel_pressed() -> void:
 	if main:
 		main.close_connection()
 		set_session_init_cover()
+
 
 func _on_restart_pressed() -> void:
 	if main:
@@ -182,6 +195,7 @@ func _on_restart_pressed() -> void:
 			main.server.broadcast_restart()
 		else:
 			main.server.broadcast_restart.rpc_id(1)
+
 
 func _on_update_timeout() -> void:
 	if visuals_available():
