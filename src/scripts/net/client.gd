@@ -400,42 +400,52 @@ func receive_node_add(scene_path: String, node_path: NodePath, node_type: String
 	var scene = GDTUtils.get_loaded_scene_root(scene_path)
 
 	if not scene:
-		var apply_add = func(scene_root: Node):
-			if scene_root.get_node_or_null(node_path):
-				return false
+		_add_node_to_unloaded_scene(scene_path, node_path, node_type, properties)
+		return
 
-			var path_size = node_path.get_name_count()
-			var parent_path = node_path.slice(0, path_size - 1)
-			var parent = scene_root.get_node_or_null(parent_path)
-			if parent_path.is_empty():
-				parent = scene_root
+	_add_node_to_loaded_scene(scene, scene_path, node_path, node_type, properties)
 
-			if not parent:
-				return false
 
-			var node: Node = ClassDB.instantiate(node_type)
-			node.name = node_path.get_name(path_size - 1)
-			parent.add_child(node)
-			node.owner = scene_root
-			_apply_properties_to_node(node, properties)
-			return true
+func _add_node_to_unloaded_scene(scene_path: String, node_path: NodePath, node_type: String, properties: Dictionary) -> void:
+	var apply_add = func(scene_root: Node):
+		if scene_root.get_node_or_null(node_path):
+			return false
+
+		var path_size = node_path.get_name_count()
+		var parent_path = node_path.slice(0, path_size - 1)
+		var parent = scene_root.get_node_or_null(parent_path)
+		if parent_path.is_empty():
+			parent = scene_root
+
+		if not parent:
+			return false
+
+		var node: Node = ClassDB.instantiate(node_type)
+		node.name = node_path.get_name(path_size - 1)
+		parent.add_child(node)
+		node.owner = scene_root
+		_apply_properties_to_node(node, properties)
+		return true
 
 	_apply_change_to_unloaded_scene(scene_path, apply_add)
-	return
 
+
+func _add_node_to_loaded_scene(scene: Node, scene_path: String, node_path: NodePath, node_type: String, properties: Dictionary) -> void:
 	var existing = scene.get_node_or_null(node_path)
-
-	if existing:print("Node %s already exists, not adding" % node_path)
-	return
+	if existing:
+		print("Node %s already exists, not adding" % node_path)
+		return
 
 	var path_size = node_path.get_name_count()
 	var parent_path = node_path.slice(0, path_size - 1)
 	var parent: Node = scene.get_node_or_null(parent_path)
 
-	if parent_path.is_empty():parent = scene
+	if parent_path.is_empty():
+		parent = scene
 
-	if not parent:print("Node add failed: Parent (%s) not found for (%s)" % [parent_path, node_path])
-	return
+	if not parent:
+		print("Node add failed: Parent (%s) not found for (%s)" % [parent_path, node_path])
+		return
 
 	var node: Node = ClassDB.instantiate(node_type)
 	node.name = node_path.get_name(path_size - 1)
