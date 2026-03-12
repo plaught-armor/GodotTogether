@@ -191,7 +191,6 @@ func receive_file(path: String, buffer: PackedByteArray) -> void:
 		print("Server attempted to send file at unsafe location: " + path)
 		return
 
-	print("Downloading " + path)
 	_check_tool_script(path, buffer)
 
 	GDTFiles.ensure_dir_exists(path)
@@ -201,8 +200,6 @@ func receive_file(path: String, buffer: PackedByteArray) -> void:
 	assert(err == OK, "Failed to open %s: %d" % [path, err])
 
 	f.store_buffer(buffer)
-
-	print("Saved successfully")
 
 	if path.get_extension() == &"tscn":
 		var current_scene = EditorInterface.get_edited_scene_root()
@@ -222,7 +219,6 @@ func sync_file_add(path: String, buffer: PackedByteArray) -> void:
 	if not GDTValidator.is_path_safe(path):
 		return
 
-	print("[CLIENT] Receiving file add: ", path)
 	_check_tool_script(path, buffer)
 	main.change_detector.suppress_filesystem_sync = true
 
@@ -250,7 +246,6 @@ func sync_file_modify(path: String, buffer: PackedByteArray) -> void:
 	if not GDTValidator.is_path_safe(path):
 		return
 
-	print("[CLIENT] Receiving file modify: ", path)
 	_check_tool_script(path, buffer)
 	main.change_detector.suppress_filesystem_sync = true
 
@@ -278,7 +273,6 @@ func sync_file_remove(path: String) -> void:
 	if not GDTValidator.is_path_safe(path):
 		return
 
-	print("[CLIENT] Receiving file remove: ", path)
 	main.change_detector.suppress_filesystem_sync = true
 	main.change_detector.cached_file_hashes.erase(path)
 
@@ -397,7 +391,6 @@ func receive_node_removal(scene_path: String, node_path: NodePath) -> void:
 	if not node:
 		return
 
-	prints("rm", node_path)
 	main.change_detector.set_node_supression(node, true)
 	node.queue_free()
 
@@ -427,24 +420,24 @@ func receive_node_add(scene_path: String, node_path: NodePath, node_type: String
 			_apply_properties_to_node(node, properties)
 			return true
 
-		_apply_change_to_unloaded_scene(scene_path, apply_add)
-		return
+	_apply_change_to_unloaded_scene(scene_path, apply_add)
+	return
 
 	var existing = scene.get_node_or_null(node_path)
 
 	if existing:
-		print("Node %s already exists, not adding" % node_path)
-		return
+	print("Node %s already exists, not adding" % node_path)
+	return
 
 	var path_size = node_path.get_name_count()
 	var parent_path = node_path.slice(0, path_size - 1)
 	var parent: Node = scene.get_node_or_null(parent_path)
 
 	if parent_path.is_empty():
-		parent = scene
+	parent = scene
 
 	if not parent:
-		print("Node add failed: Parent (%s) not found for (%s)" % [parent_path, node_path])
+	print("Node add failed: Parent (%s) not found for (%s)" % [parent_path, node_path])
 		return
 
 	var node: Node = ClassDB.instantiate(node_type)

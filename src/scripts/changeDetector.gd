@@ -447,11 +447,9 @@ func _file_added(path: String) -> void:
 		var buffer = FileAccess.get_file_as_bytes(path)
 
 		if buffer:
-			print("[CLIENT] Sending file add: ", path)
 			main.server.file_add_from_client.rpc_id(1, path, buffer)
 
 	elif main.server.is_active():
-		print("[SERVER] Broadcasting file add: ", path)
 		main.server.broadcast_file_add(path)
 
 
@@ -460,19 +458,15 @@ func _file_modified(path: String) -> void:
 		var buffer = FileAccess.get_file_as_bytes(path)
 
 		if buffer:
-			print("[CLIENT] Sending file modify: ", path)
 			main.server.file_modify_from_client.rpc_id(1, path, buffer)
 
 	elif main.server.is_active():
-		print("[SERVER] Broadcasting file modify: ", path)
 		main.server.broadcast_file_modify(path)
 
 
 func _file_removed(path: String) -> void:
 	if main.client.is_active():
-		print("[CLIENT] Sending file remove: ", path)
 		main.server.file_remove_from_client.rpc_id(1, path)
 
 	elif main.server.is_active():
-		print("[SERVER] Broadcasting file remove: ", path)
 		main.server.broadcast_file_remove(path)

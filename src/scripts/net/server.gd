@@ -212,7 +212,6 @@ func project_files_request(hashes: Dictionary) -> void:
 		if not buf:
 			continue
 
-		print("Sending " + path)
 		main.client.receive_file.rpc_id(id, path, buf)
 
 	#main.client.project_files_downloaded.rpc_id(id)
@@ -341,7 +340,6 @@ func file_add_from_client(path: String, buffer: PackedByteArray) -> void:
 	if not GDTValidator.is_path_safe(path):
 		return
 
-	print("[SERVER] Received file add from client %d: %s" % [id, path])
 	main.change_detector.suppress_filesystem_sync = true
 
 	GDTFiles.ensure_dir_exists(path)
@@ -371,7 +369,6 @@ func file_modify_from_client(path: String, buffer: PackedByteArray) -> void:
 	if not GDTValidator.is_path_safe(path):
 		return
 
-	print("[SERVER] Received file modify from client %d: %s" % [id, path])
 	main.change_detector.suppress_filesystem_sync = true
 
 	GDTFiles.ensure_dir_exists(path)
@@ -401,7 +398,6 @@ func file_remove_from_client(path: String) -> void:
 	if not GDTValidator.is_path_safe(path):
 		return
 
-	print("[SERVER] Received file remove from client %d: %s" % [id, path])
 	main.change_detector.suppress_filesystem_sync = true
 
 	if FileAccess.file_exists(path):
@@ -423,7 +419,6 @@ func broadcast_file_add(path: String, sender := 0) -> void:
 
 
 func broadcast_file_add_with_buffer(path: String, buffer: PackedByteArray, sender := 0) -> void:
-	print("[SERVER] Broadcasting file add to clients: ", path)
 	auth_rpc(main.client.sync_file_add, [path, buffer], [sender])
 
 
@@ -434,12 +429,10 @@ func broadcast_file_modify(path: String, sender := 0) -> void:
 
 
 func broadcast_file_modify_with_buffer(path: String, buffer: PackedByteArray, sender := 0) -> void:
-	print("[SERVER] Broadcasting file modify to clients: ", path)
 	auth_rpc(main.client.sync_file_modify, [path, buffer], [sender])
 
 
 func broadcast_file_remove(path: String, sender := 0) -> void:
-	print("[SERVER] Broadcasting file remove to clients: ", path)
 	auth_rpc(main.client.sync_file_remove, [path], [sender])
 
 
