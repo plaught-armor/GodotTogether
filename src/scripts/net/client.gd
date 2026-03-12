@@ -425,20 +425,17 @@ func receive_node_add(scene_path: String, node_path: NodePath, node_type: String
 
 	var existing = scene.get_node_or_null(node_path)
 
-	if existing:
-	print("Node %s already exists, not adding" % node_path)
+	if existing:print("Node %s already exists, not adding" % node_path)
 	return
 
 	var path_size = node_path.get_name_count()
 	var parent_path = node_path.slice(0, path_size - 1)
 	var parent: Node = scene.get_node_or_null(parent_path)
 
-	if parent_path.is_empty():
-	parent = scene
+	if parent_path.is_empty():parent = scene
 
-	if not parent:
-	print("Node add failed: Parent (%s) not found for (%s)" % [parent_path, node_path])
-		return
+	if not parent:print("Node add failed: Parent (%s) not found for (%s)" % [parent_path, node_path])
+	return
 
 	var node: Node = ClassDB.instantiate(node_type)
 	node.name = node_path.get_name(path_size - 1)
