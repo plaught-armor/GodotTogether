@@ -32,10 +32,17 @@ func _process(delta) -> void:
 		return
 
 	var cam = EditorInterface.get_editor_viewport_3d().get_camera_3d()
+	if not cam:
+		return
+
 	var dist = cam.position.distance_to(position)
+	if dist < 0.001:
+		ui.visible = false
+		return
 
 	ui.visible = cam.is_position_in_frustum(position)
-	ui.position = cam.unproject_position(position) - ui.size / 2 - (Vector2(0, 200) / dist)
+	if ui.visible:
+		ui.position = cam.unproject_position(position) - ui.size / 2 - (Vector2(0, 200) / dist)
 
 
 func set_user(user: GDTUser) -> void:

@@ -118,7 +118,9 @@ func _user_disconnected(user: GDTUser) -> void:
 	user_disconnected.emit(user)
 
 	if should_notify_user_connection():
-		var ip = user.peer.get_remote_address() if user.peer else "Local"
+		var ip = "Local"
+		if user.peer and user.is_peer_connected():
+			ip = user.peer.get_remote_address()
 		main.toaster.push_toast("User %s (%s) disconnected" % [user.name, ip])
 
 
